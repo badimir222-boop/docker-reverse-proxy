@@ -50,7 +50,6 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-    networks:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
