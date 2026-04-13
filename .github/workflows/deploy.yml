@@ -1,0 +1,52 @@
+name: Docker CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test Docker Compose
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check docker-compose syntax
+        run: docker compose config
+      
+      - name: Check nginx.conf syntax
+        run: |
+          docker run --rm -v $(pwd)/nginx.conf:/etc/nginx/conf.d/default.conf:ro nginx:alpine nginx -t
+      
+      - name: Test PostgreSQL connection
+        run: |
+          docker compose up -d database
+          sleep 10
+          docker exec my-database pg_isready -U admin
+          docker compose down
+      
+      - name: Test Redis
+        run: |
+          docker compose up -d redis
+          sleep 5
+          docker exec my-redis redis-cli PING
+          docker compose down
+
+  notify:
+    name: Send Notification
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Test status
+        run: |
+          if [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ Все тесты прошли успешно!"
+          else
+            echo "❌ Тесты не прошли!"
+          fi
